@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eagler Admin — Eagler Bros</title>
+<script src="config.js"></script>
+<style>
+:root{
+  --bg:#0f1117; --card:#181b23; --card2:#1f232e; --bord:#2a2f3d;
+  --txt:#d7dce6; --dim:#8a93a6; --acc:#4fc38a; --acc2:#4f9ec3;
+  --bad:#e05c5c; --warn:#e0a54f;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+body{background:var(--bg); color:var(--txt); font:15px/1.5 "Segoe UI",system-ui,sans-serif; padding-bottom:60px}
+header{padding:18px 22px 8px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between}
+h1{font-size:20px; letter-spacing:.5px}
+h1 .dot{color:var(--acc)}
+nav{display:flex; flex-wrap:wrap; gap:6px; padding:10px 22px; border-bottom:1px solid var(--bord); position:sticky; top:0; background:var(--bg); z-index:5}
+nav button{background:none; border:1px solid var(--bord); color:var(--dim); padding:7px 14px; border-radius:8px; cursor:pointer; font-size:14px}
+nav button.act{color:var(--txt); border-color:var(--acc); background:var(--card)}
+main{padding:16px 22px; max-width:1100px; margin:0 auto}
+section{display:none}
+section.act{display:block}
+.card{background:var(--card); border:1px solid var(--bord); border-radius:12px; padding:16px; margin-bottom:14px}
+.card h3{font-size:15px; margin-bottom:10px; color:var(--acc)}
+.row{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px}
+label{font-size:13px; color:var(--dim); display:block; margin-bottom:3px}
+input,select,textarea{background:var(--card2); border:1px solid var(--bord); color:var(--txt); border-radius:8px; padding:8px 10px; font-size:14px; width:100%}
+input:focus,select:focus,textarea:focus{outline:none; border-color:var(--acc)}
+button.btn{background:var(--acc); border:none; color:#0c120e; font-weight:600; padding:8px 16px; border-radius:8px; cursor:pointer; font-size:14px}
+button.btn.sec{background:var(--card2); color:var(--txt); border:1px solid var(--bord); font-weight:400}
+button.btn.danger{background:var(--bad); color:#fff}
+button.btn.mini{padding:4px 10px; font-size:12px; border-radius:6px}
+table{width:100%; border-collapse:collapse; font-size:14px}
+th,td{text-align:left; padding:7px 10px; border-bottom:1px solid var(--bord)}
+th{color:var(--dim); font-weight:500; font-size:12px; text-transform:uppercase; letter-spacing:.5px}
+.pill{display:inline-block; padding:2px 10px; border-radius:20px; font-size:12px; font-weight:600}
+.pill.ok{background:#1d3a2b; color:var(--acc)}
+.pill.bad{background:#3a1d1d; color:var(--bad)}
+.pill.warn{background:#3a2f1d; color:var(--warn)}
+.pill.dim{background:var(--card2); color:var(--dim)}
+.mono{font-family:Consolas,monospace; font-size:13px; word-break:break-all}
+.pre{background:#0c0e13; border:1px solid var(--bord); border-radius:8px; padding:10px; max-height:340px; overflow:auto; white-space:pre-wrap; font-family:Consolas,monospace; font-size:13px}
+.dim{color:var(--dim); font-size:13px}
+.ok-msg{color:var(--acc)} .err-msg{color:var(--bad)}
+.copy{cursor:pointer; border:none; background:var(--card2); color:var(--acc2); border-radius:6px; padding:3px 8px; font-size:12px}
+#toast{position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--card2); border:1px solid var(--acc); color:var(--txt); padding:10px 18px; border-radius:10px; display:none; z-index:99; max-width:80%}
+.bar{height:8px; background:var(--card2); border-radius:6px; overflow:hidden; margin-top:6px}
+.bar i{display:block; height:100%; background:var(--acc)}
+.banner{background:#3a2f1d; color:var(--warn); border:1px solid var(--warn); border-radius:8px; padding:8px 12px; font-size:13px; margin-bottom:12px; display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>EAGLER ADMIN <span class="dot">■</span> <span class="dim" style="font-size:13px">Fabric 26.2 + Velocity + EaglerX</span></h1>
+  <div class="row" style="max-width:640px; flex:1">
+    <div style="flex:2"><label>URL del panel (túnel)</label><input id="cfgUrl" placeholder="https://...trycloudflare.com"></div>
+    <div style="flex:1"><label>Clave admin</label><input id="cfgKey" type="password" placeholder="panel.key"></div>
+    <button class="btn" id="btnSave" style="align-self:flex-end">Conectar</button>
+  </div>
+</header>
+
+<nav>
+  <button data-t="estado" class="act">Estado</button>
+  <button data-t="config">Config</button>
+  <button data-t="jugadores">Jugadores</button>
+  <button data-t="consola">Consola</button>
+  <button data-t="rangos">Rangos</button>
+  <button data-t="bot">Bot</button>
+  <button data-t="logs">Logs</button>
+</nav>
+
+<main>
+
+<!-- ============ ESTADO ============ -->
+<section id="t-estado" class="act">
+  <div id="estadoError" class="banner"></div>
+  <div class="card"><h3>Servidor Fabric</h3>
+    <div class="row" style="gap:24px">
+      <div><span class="dim">Estado</span><br><span id="stVivo" class="pill dim">…</span></div>
+      <div style="flex:1; min-width:220px"><span class="dim">Jugadores</span><br><span id="stJug" class="mono">…</span></div>
+      <div><span class="dim">Mundo</span><br><span id="stMundo" class="mono">…</span></div>
+    </div>
+  </div>
+  <div class="card"><h3>Puertos</h3><div class="row" id="stPuertos"></div></div>
+  <div class="card"><h3>Servicios Windows</h3>
+    <table><thead><tr><th>Servicio</th><th>Estado</th><th style="text-align:right">Acciones</th></tr></thead>
+    <tbody id="stServicios"></tbody></table>
+  </div>
+  <div class="card"><h3>Túneles y entradas</h3><table id="stTuneles"></table>
+    <p class="dim" style="margin-top:8px">Si la URL del panel cambió y la página no conecta, corre ACTUALIZAR-URL-PANEL.cmd en el server (o pega la nueva URL arriba).</p>
+  </div>
+</section>
+
+<!-- ============ CONFIG ============ -->
+<section id="t-config">
+  <div class="banner">⚠ Los cambios en la config aplican al <b>reiniciar</b> el server / Velocity. Siempre se hace backup automático antes de escribir.</div>
+  <div class="card"><h3>server.properties (Fabric)</h3>
+    <div class="grid" id="cfgProps"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="btnProps">Guardar server.properties</button>
+      <button class="btn danger sec" id="btnReiniciarFabric">Reiniciar Fabric</button>
+    </div>
+    <p class="dim mono" id="cfgPropsMsg" style="margin-top:8px"></p>
+  </div>
+  <div class="card"><h3>velocity.toml (proxy)</h3>
+    <div class="grid" id="cfgVelocity"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="btnVelocity">Guardar velocity.toml</button>
+      <button class="btn danger sec" id="btnReiniciarVelocity">Reiniciar Velocity</button>
+    </div>
+    <p class="dim mono" id="cfgVelocityMsg" style="margin-top:8px"></p>
+  </div>
+</section>
+
+<!-- ============ JUGADORES ============ -->
+<section id="t-jugadores">
+  <div class="card"><h3>Whitelist / bans (se aplican en vivo vía RCON)</h3>
+    <div class="row">
+      <input id="wgNick" placeholder="nick" style="width:180px">
+      <button class="btn mini" data-op="add">+ whitelist</button>
+      <button class="btn mini sec" data-op="remove">− whitelist</button>
+      <button class="btn mini danger" data-op="ban">ban</button>
+      <button class="btn mini sec" data-op="pardon">pardon</button>
+      <button class="btn mini sec" data-op="on">whitelist ON</button>
+      <button class="btn mini sec" data-op="off">whitelist OFF</button>
+    </div>
+    <p class="dim mono" id="wgMsg" style="margin-top:8px"></p>
+  </div>
+  <div class="card"><h3>En whitelist</h3><div id="wgLista" class="mono"></div></div>
+  <div class="card"><h3>Baneados</h3><div id="wgBans" class="mono"></div></div>
+  <div class="card"><h3>Jugadores conocidos (usercache)</h3><div id="wgCache" class="dim mono"></div></div>
+</section>
+
+<!-- ============ CONSOLA ============ -->
+<section id="t-consola">
+  <div class="card"><h3>Consola RCON</h3>
+    <div class="row"><input id="rcCmd" placeholder="comando (ej: list, say hola, lp groups)" style="flex:1" class="mono">
+    <button class="btn" id="btnRc">Enviar</button></div>
+    <div class="pre" id="rcOut" style="margin-top:10px">…</div>
+  </div>
+</section>
+
+<!-- ============ RANGOS ============ -->
+<section id="t-rangos">
+  <div class="card"><h3>Grupos LuckPerms</h3><div id="rgGrupos"></div>
+    <div class="row" style="margin-top:12px">
+      <input id="rgNuevo" placeholder="nuevo grupo" style="width:180px">
+      <button class="btn mini" id="rgCreate">Crear grupo</button>
+    </div>
+  </div>
+  <div class="card"><h3>Asignar rango a jugador</h3>
+    <div class="row">
+      <input id="rgNick" placeholder="nick" style="width:180px">
+      <select id="rgGrupo" style="width:180px"></select>
+      <button class="btn mini" id="rgAssign">Asignar</button>
+      <button class="btn mini sec" id="rgUnassign">Quitar a default</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <input id="rgPerm" placeholder="permiso (ej: essentials.fly)" style="flex:1" class="mono">
+      <button class="btn mini" id="rgSetperm">Dar permiso al grupo</button>
+      <button class="btn mini sec" id="rgUnsetperm">Quitar permiso</button>
+    </div>
+    <p class="dim mono" id="rgMsg" style="margin-top:8px"></p>
+  </div>
+  <div class="card"><h3>Historial</h3><div id="rgHist" class="dim mono"></div></div>
+</section>
+
+<!-- ============ BOT ============ -->
+<section id="t-bot">
+  <div class="card"><h3>MOD (bot)</h3>
+    <div class="row">
+      <span id="botEstado" class="pill dim">…</span>
+      <button class="btn mini" data-ba="start">Encender</button>
+      <button class="btn mini danger" data-ba="stop">Apagar</button>
+      <button class="btn mini sec" data-ba="restart">Reiniciar</button>
+    </div>
+  </div>
+  <div class="card"><h3>Puente Discord</h3>
+    <div class="row">
+      <span id="puenteEstado" class="pill dim">…</span>
+      <button class="btn mini" data-ba="puente-start">Encender</button>
+      <button class="btn mini danger" data-ba="puente-stop">Apagar</button>
+    </div>
+  </div>
+  <div class="card"><h3>Personalidad (PERSONA del bot)</h3>
+    <textarea id="botPersona" rows="5"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn mini" id="botPersonaSave">Guardar personalidad</button></div>
+  </div>
+  <div class="card"><h3>Memoria del bot (últimos mensajes)</h3><div class="pre" id="botLog">…</div></div>
+</section>
+
+<!-- ============ LOGS ============ -->
+<section id="t-logs">
+  <div class="card"><h3>Log de Fabric (latest.log)</h3>
+    <div class="row">
+      <input id="lgFilter" placeholder="filtro (opcional)" style="flex:1" class="mono">
+      <button class="btn mini" id="lgRefresh">Refrescar</button>
+      <label class="row" style="gap:6px"><input type="checkbox" id="lgAuto" style="width:auto"> auto</label>
+    </div>
+    <div class="pre" id="lgOut" style="max-height:480px; margin-top:10px">…</div>
+  </div>
+</section>
+
+</main>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ---------- conexion ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let URL_ = localStorage.getItem("ea_url") || (window.PANEL_URL || "");
+let KEY_ = localStorage.getItem("ea_key") || "";
+$("#cfgUrl").value = URL_; $("#cfgKey").value = KEY_;
+
+function toast(msg, ok = true) {
+  const t = $("#toast");
+  t.textContent = msg; t.style.borderColor = ok ? "var(--acc)" : "var(--bad)";
+  t.style.display = "block";
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", 3500);
+}
+
+async function api(path, opts = {}) {
+  const base = (URL_ || "").replace(/\/+$/, "");
+  if (!base) throw new Error("no hay URL del panel configurada");
+  const r = await fetch(base + path, {
+    method: opts.method || "GET",
+    headers: {"X-Panel-Key": KEY_, ...(opts.body ? {"Content-Type": "application/json"} : {})},
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  if (r.status === 403) throw new Error("clave invalida (panel.key)");
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+
+$("#btnSave").onclick = async () => {
+  URL_ = $("#cfgUrl").value.trim().replace(/\/+$/, "");
+  KEY_ = $("#cfgKey").value.trim();
+  localStorage.setItem("ea_url", URL_); localStorage.setItem("ea_key", KEY_);
+  try { await api("/api/status"); toast("conectado ✓"); refrescarTab(); }
+  catch (e) { toast("no conecta: " + e.message, false); }
+};
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.remove("act"));
+  document.querySelectorAll("section").forEach(x => x.classList.remove("act"));
+  b.classList.add("act"); $("#t-" + b.dataset.t).classList.add("act");
+  refrescarTab();
+});
+
+function refrescarTab() {
+  const t = document.querySelector("nav button.act").dataset.t;
+  ({estado: cargarEstado, config: cargarConfig, jugadores: cargarJugadores,
+    rangos: cargarRangos, bot: cargarBot, logs: cargarLogs}[t] || (() => {}))();
+}
+
+/* ---------- estado ---------- */
+async function cargarEstado() {
+  const err = $("#estadoError");
+  err.style.display = "none";
+  try {
+    const [st, sv, tu] = await Promise.all([api("/api/status"), api("/api/servicios"), api("/api/tuneles")]);
+    const vivo = st.vivo;
+    const pv = $("#stVivo");
+    pv.textContent = vivo ? "EN LÍNEA" : "APAGADO";
+    pv.className = "pill " + (vivo ? "ok" : "bad");
+    $("#stJug").textContent = st.jugadores || "-";
+    $("#stMundo").textContent = st.mundo_mb ? st.mundo_mb + " MB" : "-";
+    const NOMBRE_PUERTOS = {25565: "Fabric", 54201: "Velocity/EaglerX", 19413: "Reenviador", 5555: "Panel", 8080: "Mapa"};
+    $("#stPuertos").innerHTML = Object.entries(sv.puertos).map(([p, v]) =>
+      `<span class="dim">${NOMBRE_PUERTOS[p] || p} <b>${p}</b></span> <span class="pill ${v ? "ok" : "bad"}">${v ? "OPEN" : "cerrado"}</span>`).join("");
+    let filas = Object.entries(sv.servicios).map(([n, s]) => {
+      const cls = s === "RUNNING" ? "ok" : (s === "PAUSED" ? "warn" : "bad");
+      return `<tr><td class="mono">${esc(n)}</td><td><span class="pill ${cls}">${esc(s)}</span></td>
+        <td style="text-align:right">
+          <button class="btn mini sec" data-sv="${esc(n)}" data-ac="start">start</button>
+          <button class="btn mini sec" data-sv="${esc(n)}" data-ac="stop">stop</button>
+          <button class="btn mini sec" data-sv="${esc(n)}" data-ac="restart">restart</button>
+        </td></tr>`;
+    });
+    const vel = sv.puertos["54201"];
+    filas.push(`<tr><td class="mono">Velocity (proceso)</td>
+      <td><span class="pill ${vel ? "ok" : "bad"}">${vel ? "RUNNING" : "DOWN"}</span></td>
+      <td style="text-align:right">
+        <button class="btn mini sec" data-sv="Velocity" data-ac="start">start</button>
+        <button class="btn mini sec" data-sv="Velocity" data-ac="restart">restart</button>
+      </td></tr>`);
+    $("#stServicios").innerHTML = filas.join("");
+    document.querySelectorAll("[data-sv]").forEach(b => b.onclick = () => controlServicio(b.dataset.sv, b.dataset.ac));
+    const filasTu = Object.entries(tu).filter(([, v]) => v).map(([k, v]) =>
+      `<tr><td class="dim">${esc(k)}</td><td class="mono" style="max-width:420px; overflow:hidden; text-overflow:ellipsis">${esc(v)}</td>
+       <td><button class="copy" data-copy="${esc(v)}">copiar</button></td></tr>`);
+    $("#stTuneles").innerHTML = filasTu.length ? filasTu.join("") :
+      '<tr><td class="dim">sin túneles detectados</td></tr>';
+    document.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => {
+      navigator.clipboard.writeText(b.dataset.copy); toast("copiado ✓");
+    });
+  } catch (e) {
+    err.textContent = "No conecta con el panel: " + e.message;
+    err.style.display = "block";
+  }
+}
+
+async function controlServicio(nombre, accion) {
+  if (["stop", "restart"].includes(accion) && !confirm(`${accion.toUpperCase()} de ${nombre}: ¿seguro? Puede tirar a los jugadores conectados.`)) return;
+  toast("enviando " + accion + " " + nombre + "…");
+  try {
+    const r = await api("/api/servicios", {method: "POST", body: {name: nombre, action: accion}});
+    toast(r.out || "hecho"); setTimeout(cargarEstado, 2500);
+  } catch (e) { toast(e.message, false); }
+}
+
+/* ---------- config ---------- */
+const PROPS_FIELDS = [
+  {k: "motd", t: "text", l: "MOTD"},
+  {k: "max-players", t: "num", l: "Máx jugadores"},
+  {k: "difficulty", t: "sel", o: ["peaceful", "easy", "normal", "hard"], l: "Dificultad"},
+  {k: "gamemode", t: "sel", o: ["survival", "creative", "adventure", "spectator"], l: "Modo de juego"},
+  {k: "hardcore", t: "bool", l: "Hardcore"},
+  {k: "pvp", t: "bool", l: "PvP"},
+  {k: "white-list", t: "bool", l: "Whitelist"},
+  {k: "enforce-whitelist", t: "bool", l: "Forzar whitelist"},
+  {k: "online-mode", t: "bool", l: "Online mode (cuentas premium)"},
+  {k: "allow-flight", t: "bool", l: "Permitir volar"},
+  {k: "view-distance", t: "num", l: "View distance"},
+  {k: "simulation-distance", t: "num", l: "Simulation distance"},
+  {k: "spawn-protection", t: "num", l: "Protección de spawn"},
+  {k: "op-permission-level", t: "num", l: "Nivel OP"},
+];
+const VEL_FIELDS = [
+  {k: "motd", t: "text", l: "MOTD del proxy"},
+  {k: "show-max-players", t: "num", l: "Máx jugadores mostrados"},
+  {k: "online-mode", t: "bool", l: "Online mode"},
+  {k: "bind", t: "text", l: "Bind (ip:puerto)"},
+];
+
+function campoHTML(id, f, valor) {
+  const v = String(valor ?? "");
+  if (f.t === "bool")
+    return `<select id="${id}"><option value="true"${v === "true" ? " selected" : ""}>true</option><option value="false"${v !== "true" ? " selected" : ""}>false</option></select>`;
+  if (f.t === "sel")
+    return `<select id="${id}">${f.o.map(o => `<option${o === v ? " selected" : ""}>${o}</option>`).join("")}</select>`;
+  return `<input id="${id}" value="${esc(v)}" ${f.t === "num" ? 'type="number"' : ""}>`;
+}
+
+async function cargarConfig() {
+  const [pr, ve] = await Promise.all([api("/api/props"), api("/api/velocity")]);
+  $("#cfgProps").innerHTML = PROPS_FIELDS.map(f =>
+    `<div><label>${f.l} <span class="dim mono">${f.k}</span></label>${campoHTML("pr_" + f.k, f, pr.props[f.k])}</div>`).join("");
+  $("#cfgVelocity").innerHTML = VEL_FIELDS.map(f =>
+    `<div><label>${f.l} <span class="dim mono">${f.k}</span></label>${campoHTML("ve_" + f.k, f, ve.velocity[f.k])}</div>`).join("");
+}
+
+function leerCampos(prefijo, fields) {
+  const cambios = {};
+  fields.forEach(f => {
+    const el = $("#" + prefijo + f.k);
+    if (el && el.value !== "") cambios[f.k] = el.value;
+  });
+  return cambios;
+}
+
+$("#btnProps").onclick = async () => {
+  try {
+    const r = await api("/api/props", {method: "POST", body: {cambios: leerCampos("pr_", PROPS_FIELDS)}});
+    $("#cfgPropsMsg").textContent = r.out; toast("config guardada ✓");
+  } catch (e) { $("#cfgPropsMsg").textContent = e.message; }
+};
+$("#btnVelocity").onclick = async () => {
+  try {
+    const r = await api("/api/velocity", {method: "POST", body: {cambios: leerCampos("ve_", VEL_FIELDS)}});
+    $("#cfgVelocityMsg").textContent = r.out; toast("velocity guardado ✓");
+  } catch (e) { $("#cfgVelocityMsg").textContent = e.message; }
+};
+$("#btnReiniciarFabric").onclick = () => controlServicio("EaglerFabric", "restart");
+$("#btnReiniciarVelocity").onclick = () => controlServicio("Velocity", "restart");
+
+/* ---------- jugadores ---------- */
+async function cargarJugadores() {
+  const w = await api("/api/whitelist");
+  $("#wgLista").innerHTML = w.whitelist.length
+    ? w.whitelist.map(u => `${esc(u.name)} <span class="dim mono">${esc(u.uuid || "")}</span>`).join("<br>")
+    : '<span class="dim">vacía</span>';
+  $("#wgBans").innerHTML = w.bans.length
+    ? w.bans.map(u => `${esc(u.name)} <span class="dim">${esc(u.reason || "")}</span>`).join("<br>")
+    : '<span class="dim">nadie baneado</span>';
+  $("#wgCache").innerHTML = w.cache.map(u => esc(u.name)).join(", ");
+}
+document.querySelectorAll("[data-op]").forEach(b => b.onclick = async () => {
+  const nick = $("#wgNick").value.trim();
+  try {
+    const r = await api("/api/whitelist", {method: "POST", body: {op: b.dataset.op, nick}});
+    $("#wgMsg").textContent = r.out; cargarJugadores();
+  } catch (e) { $("#wgMsg").textContent = e.message; }
+});
+
+/* ---------- consola ---------- */
+async function rconEnviar() {
+  const cmd = $("#rcCmd").value.trim();
+  if (!cmd) return;
+  $("#rcOut").textContent = "…";
+  try {
+    const r = await api("/api/rcon", {method: "POST", body: {cmd}});
+    $("#rcOut").textContent = r.out || "(sin respuesta)";
+    $("#rcCmd").select();
+  } catch (e) { $("#rcOut").textContent = "error: " + e.message; }
+}
+$("#btnRc").onclick = rconEnviar;
+$("#rcCmd").addEventListener("keydown", e => { if (e.key === "Enter") rconEnviar(); });
+
+/* ---------- rangos ---------- */
+let rangosData = null;
+async function cargarRangos() {
+  rangosData = await api("/api/rangos");
+  const g = rangosData.grupos || {};
+  $("#rgGrupos").innerHTML = Object.entries(g).map(([n, d]) =>
+    `<div style="margin-bottom:10px"><b>${esc(n)}</b> <span class="dim">perms: ${d.perms.length ? esc(d.perms.join(", ")) : "—"} · miembros: ${d.miembros.length ? esc(d.miembros.join(", ")) : "—"}</span>
+     ${n !== "default" ? `<button class="btn mini danger" data-rgdel="${esc(n)}" style="margin-left:8px">borrar</button>` : ""}</div>`).join("");
+  $("#rgGrupo").innerHTML = Object.keys(g).map(n => `<option>${esc(n)}</option>`).join("");
+  $("#rgHist").innerHTML = (rangosData.historial || []).slice(-15).map(esc).join("<br>") || "—";
+  document.querySelectorAll("[data-rgdel]").forEach(b => b.onclick = () => rangosAccion({action: "delete", grupo: b.dataset.rgdel}));
+}
+async function rangosAccion(body) {
+  try {
+    const r = await api("/api/rangos", {method: "POST", body});
+    $("#rgMsg").textContent = "ok"; await cargarRangos();
+  } catch (e) { $("#rgMsg").textContent = e.message; }
+}
+$("#rgCreate").onclick = () => rangosAccion({action: "create", grupo: $("#rgNuevo").value.trim()});
+$("#rgAssign").onclick = () => rangosAccion({action: "assign", grupo: $("#rgGrupo").value, nick: $("#rgNick").value.trim()});
+$("#rgUnassign").onclick = () => rangosAccion({action: "unassign", nick: $("#rgNick").value.trim()});
+$("#rgSetperm").onclick = () => rangosAccion({action: "setperm", grupo: $("#rgGrupo").value, perm: $("#rgPerm").value.trim()});
+$("#rgUnsetperm").onclick = () => rangosAccion({action: "unsetperm", grupo: $("#rgGrupo").value, perm: $("#rgPerm").value.trim()});
+
+/* ---------- bot ---------- */
+async function cargarBot() {
+  const [bs, bl, bc] = await Promise.all([api("/api/botstatus"), api("/api/botlog"), api("/api/botconfig")]);
+  const p = (vivo, el) => { el.textContent = vivo ? "CORRIENDO" : "APAGADO"; el.className = "pill " + (vivo ? "ok" : "dim"); };
+  p(bs.bot, $("#botEstado")); p(bs.puente, $("#puenteEstado"));
+  $("#botLog").textContent = (bl.log || []).slice(-30).map(l => `[${l.rol || "?"}] ${l.t || ""}`).join("\n") || "…";
+  if (document.activeElement !== $("#botPersona")) $("#botPersona").value = bc.persona || "";
+}
+document.querySelectorAll("[data-ba]").forEach(b => b.onclick = async () => {
+  try {
+    const r = await api("/api/bot", {method: "POST", body: {action: b.dataset.ba}});
+    toast(r.out || "hecho"); setTimeout(cargarBot, 1500);
+  } catch (e) { toast(e.message, false); }
+});
+$("#botPersonaSave").onclick = async () => {
+  try {
+    await api("/api/botconfig", {method: "POST", body: {persona: $("#botPersona").value}});
+    toast("personalidad guardada (reinicia el bot para que aplique)");
+  } catch (e) { toast(e.message, false); }
+};
+
+/* ---------- logs ---------- */
+let lgTimer = null;
+async function cargarLogs() {
+  try {
+    const r = await api("/api/logs?n=120&filter=" + encodeURIComponent($("#lgFilter").value || ""));
+    const el = $("#lgOut");
+    const alFondo = el.scrollTop + el.clientHeight >= el.scrollHeight - 30;
+    el.textContent = (r.log || []).join("\n") || "…";
+    if (alFondo) el.scrollTop = el.scrollHeight;
+  } catch (e) { $("#lgOut").textContent = "error: " + e.message; }
+}
+$("#lgRefresh").onclick = cargarLogs;
+$("#lgFilter").addEventListener("keydown", e => { if (e.key === "Enter") cargarLogs(); });
+$("#lgAuto").onchange = e => {
+  clearInterval(lgTimer);
+  if (e.target.checked) lgTimer = setInterval(cargarLogs, 4000);
+};
+
+/* ---------- arranque ---------- */
+if (URL_ && KEY_) refrescarTab();
+</script>
+</body>
+</html>
