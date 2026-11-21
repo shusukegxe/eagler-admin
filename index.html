@@ -70,6 +70,7 @@ th{color:var(--dim); font-weight:500; font-size:12px; text-transform:uppercase; 
   <button data-t="consola">Consola</button>
   <button data-t="rangos">Rangos</button>
   <button data-t="bot">Bot</button>
+  <button data-t="discord">Discord</button>
   <button data-t="logs">Logs</button>
 </nav>
 
@@ -193,6 +194,19 @@ th{color:var(--dim); font-weight:500; font-size:12px; text-transform:uppercase; 
   <div class="card"><h3>Memoria del bot (últimos mensajes)</h3><div class="pre" id="botLog">…</div></div>
 </section>
 
+<!-- ============ DISCORD ============ -->
+<section id="t-discord">
+  <div class="card"><h3>Puente Discord ↔ Minecraft (en vivo)</h3>
+    <div id="dcFeed" style="max-height:380px; overflow-y:auto; background:#0c0e13; border:1px solid var(--bord); border-radius:8px; padding:10px"></div>
+    <div class="row" style="margin-top:10px">
+      <input id="dcMsg" placeholder="Escribir al canal de Discord (llegará al juego como [Discord])" style="flex:1">
+      <button class="btn" id="btnDc">Enviar</button>
+    </div>
+    <p class="dim mono" id="dcOut" style="margin-top:8px"></p>
+    <p class="dim" style="margin-top:6px">🎮 = mensaje del juego · 💬 = mensaje de Discord · 🛠 = enviado desde este panel. Las imágenes de Discord se muestran en el juego como pixel-art.</p>
+  </div>
+</section>
+
 <!-- ============ LOGS ============ -->
 <section id="t-logs">
   <div class="card"><h3>Log de Fabric (latest.log)</h3>
@@ -257,7 +271,8 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
 function refrescarTab() {
   const t = document.querySelector("nav button.act").dataset.t;
   ({estado: cargarEstado, config: cargarConfig, jugadores: cargarJugadores,
-    rangos: cargarRangos, bot: cargarBot, logs: cargarLogs}[t] || (() => {}))();
+    rangos: cargarRangos, bot: cargarBot, discord: cargarDiscord,
+    logs: cargarLogs}[t] || (() => {}))();
 }
 
 /* ---------- estado ---------- */
@@ -458,6 +473,51 @@ $("#botPersonaSave").onclick = async () => {
     toast("personalidad guardada (reinicia el bot para que aplique)");
   } catch (e) { toast(e.message, false); }
 };
+
+/* ---------- discord ---------- */
+const DIR_ICONO = {juego: "🎮", discord: "💬", panel: "🛠"};
+const DIR_COLOR = {juego: "var(--acc)", discord: "var(--acc2)", panel: "var(--warn)"};
+let dcTimer = null;
+
+function horaDe(ts) {
+  try { return new Date((ts || 0) * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"}); }
+  catch (e) { return ""; }
+}
+
+async function cargarDiscord() {
+  try {
+    const r = await api("/api/discord?n=80");
+    const el = $("#dcFeed");
+    const alFondo = el.scrollTop + el.clientHeight >= el.scrollHeight - 40;
+    el.innerHTML = (r.feed || []).map(e => {
+      const dir = DIR_ICONO[e.dir] ? e.dir : "discord";
+      const img = e.img ? `<div><img src="${esc(e.img)}" style="max-width:160px; max-height:110px; border-radius:6px; margin-top:4px" alt=""></div>` : "";
+      return `<div style="margin-bottom:8px; border-left:3px solid ${DIR_COLOR[dir]}; padding-left:8px">
+        <span class="dim">${horaDe(e.ts)}</span> ${DIR_ICONO[dir]} <b>${esc(e.autor || "?")}</b>
+        <span class="dim" style="font-size:12px">(${esc(e.dir)})</span><br>
+        <span style="white-space:pre-wrap">${esc(e.texto || "")}</span>${img}</div>`;
+    }).join("") || '<span class="dim">sin mensajes todavía — esperando actividad del puente</span>';
+    if (alFondo) el.scrollTop = el.scrollHeight;
+  } catch (e) {
+    $("#dcFeed").innerHTML = '<span class="err-msg">error: ' + esc(e.message) + "</span>";
+  }
+}
+
+async function discordEnviar() {
+  const texto = $("#dcMsg").value.trim();
+  if (!texto) return;
+  try {
+    const r = await api("/api/discord", {method: "POST", body: {texto}});
+    $("#dcOut").textContent = r.out || "enviado";
+    $("#dcMsg").value = "";
+    setTimeout(cargarDiscord, 1500);
+  } catch (e) { $("#dcOut").textContent = "error: " + e.message; }
+}
+$("#btnDc").onclick = discordEnviar;
+$("#dcMsg").addEventListener("keydown", e => { if (e.key === "Enter") discordEnviar(); });
+setInterval(() => {
+  if (document.querySelector("nav button.act")?.dataset.t === "discord") cargarDiscord();
+}, 5000);
 
 /* ---------- logs ---------- */
 let lgTimer = null;
